@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#14213D">
+<title>MPB GROUP — Holding</title>
+<style>
+:root{--b:#14213D;--a:#E0A100;--bg:#F3F5F9;--l:#E1E6EE;--t:#17202E;--m:#617086;--g:#1F9254;--r:#C64236}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--t);font:14px system-ui,sans-serif;padding-bottom:40px}
+header{background:var(--b);color:#fff;padding:18px 16px}
+header h1{font-size:18px;letter-spacing:.04em}header small{color:#F2C84B;font-size:11px;letter-spacing:.1em}
+main{max-width:980px;margin:0 auto;padding:14px}
+.card{background:#fff;border:1px solid var(--l);border-radius:14px;padding:16px;margin-bottom:14px}
+h3{font-size:14px;margin-bottom:12px;color:var(--b)}
+.tot{font-size:30px;font-weight:800;color:var(--b)}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1;min-width:140px}
+.k span{font-size:12px;color:var(--m)}.k b{display:block;font-size:19px;margin-top:4px}
+.up{color:var(--g)}.dn{color:var(--r)}
+.bar{display:flex;align-items:center;gap:8px;margin:9px 0;font-size:13px}
+.bar i{display:block;height:20px;border-radius:5px;min-width:3px}
+.bar .n{width:130px;flex-shrink:0;font-weight:600}.bar .v{white-space:nowrap;color:var(--m);font-size:12px}
+.rk{display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;border-radius:50%;background:var(--a);color:#fff;font-size:11px;font-weight:700;margin-right:4px}
+.ch{display:flex;align-items:flex-end;gap:6px;height:170px;border-bottom:1px solid var(--l)}
+.ch>div{flex:1;display:flex;flex-direction:column-reverse;height:100%;position:relative}
+.ch>div i{display:block;width:100%}
+.lb{display:flex;gap:6px;font-size:11px;color:var(--m);margin-top:4px}.lb span{flex:1;text-align:center}
+.lg{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:12px}.lg b{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px}
+select,input,button{font:inherit;padding:9px 10px;border:1px solid var(--l);border-radius:8px;background:#fff}
+button{background:var(--b);color:#fff;border:0;font-weight:600;cursor:pointer}
+.st{font-size:11px;padding:2px 8px;border-radius:99px;background:#E4F5EC;color:var(--g);font-weight:600}.st.off{background:#FBF0DA;color:#C98A0F}
+.ev{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--l);font-size:13px}
+.ev button{background:none;color:var(--r);padding:2px 8px}
+</style>
+</head>
+<body>
+<header><small>HOLDING</small><h1>MPB GROUP</h1></header>
+<main>
+  <div class="card"><span style="color:var(--m);font-size:12px">Chiffre d'affaires total du groupe</span>
+    <div class="tot" id="tot">…</div>
+    <div class="row" style="margin-top:12px" id="kp"></div></div>
+  <div class="card"><h3>Classement des applications <span style="font-weight:400;color:var(--m)">(ce mois)</span></h3><div id="rank"></div></div>
+  <div class="card"><h3>Évolution sur 6 mois</h3><div class="ch" id="ch"></div><div class="lb" id="lb"></div><div class="lg" id="lg"></div></div>
+  <div class="card"><h3>Applications connectées</h3><div id="apps"></div>
+    <div id="epl" style="margin-top:12px;display:none"><p style="font-size:12px;color:var(--m);margin-bottom:8px">Connexion PDG d'Express Pressing (même nom et même code que dans l'application) :</p>
+    <div class="row"><input id="epn" placeholder="Nom PDG"><input id="epc" type="password" placeholder="Code"><button onclick="epLogin()">Connecter</button></div>
+    <p id="epe" class="dn" style="font-size:12px;margin-top:6px"></p></div></div>
+  <div class="card"><h3>Ajouter un revenu manuel</h3>
+    <div class="row"><select id="fa"></select><input id="fm" type="month"><input id="fv" type="number" min="0" placeholder="Montant FCFA"><button onclick="addM()">Ajouter</button></div>
+    <div id="hist" style="margin-top:10px"></div></div>
+</main>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script>
+const APPS=[
+ {id:'mperfect',name:'Mperfect Pub',color:'#E0A100',auto:true},
+ {id:'pressing',name:'Express Pressing',color:'#2F5BA3',auto:true},
+ {id:'numerique',name:'Express Numérique',color:'#1F9254'},
+ {id:'events',name:'PRO EVENTS',color:'#B5446E'}
+];
+// Applications reliées automatiquement (lecture directe de leur base Firebase)
+const FB_MPERFECT={apiKey:"AIzaSyBaz__Dzdrwame2s7yp62Yv-os_ft-A8-4",authDomain:"mperfect-pub-prime.firebaseapp.com",projectId:"mperfect-pub-prime",storageBucket:"mperfect-pub-prime.firebasestorage.app",messagingSenderId:"142967507124",appId:"1:142967507124:web:5f9e5667f8aec550beafe1"};
+const $=i=>document.getElementById(i),KEY='mpb-holding-manual';
+const fmt=n=>Math.round(n).toLocaleString('fr-FR')+' F';
+const ym=d=>{d=new Date(d);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
+let AUTO={mperfect:{},pressing:{}},status={mperfect:'connexion…',pressing:'non connecté'},MAN=[];
+const live=a=>status[a]==='en direct';
+try{MAN=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){}
+const saveM=()=>{try{localStorage.setItem(KEY,JSON.stringify(MAN))}catch(e){}};
+
+function months(n){const o=[],d=new Date();d.setDate(1);for(let i=n-1;i>=0;i--){const x=new Date(d.getFullYear(),d.getMonth()-i,1);o.push(ym(x))}return o}
+function rev(app,m){let s=(AUTO[app]||{})[m]||0;if(!live(app))MAN.forEach(e=>{if(e.app===app&&e.m===m)s+=e.v});return s}
+const tot=app=>{let s=0;Object.values(AUTO[app]||{}).forEach(v=>s+=v);if(!live(app))MAN.forEach(e=>{if(e.app===app)s+=e.v});return s};
+const pct=(a,b)=>b>0?Math.round((a-b)/b*100):(a>0?100:0);
+const badge=p=>`<span class="${p>=0?'up':'dn'}">${p>=0?'▲':'▼'} ${Math.abs(p)}%</span>`;
+
+function render(){
+ const M=months(6),cur=M[5],prev=M[4];
+ const sum=m=>APPS.reduce((s,a)=>s+rev(a.id,m),0);
+ const all=APPS.reduce((s,a)=>s+tot(a.id),0);
+ $('tot').textContent=fmt(all);
+ $('kp').innerHTML=`<div class="k"><span>Ce mois</span><b>${fmt(sum(cur))}</b></div>
+  <div class="k"><span>Mois dernier</span><b>${fmt(sum(prev))}</b></div>
+  <div class="k"><span>Évolution</span><b>${badge(pct(sum(cur),sum(prev)))}</b></div>`;
+ const R=APPS.map(a=>({a,v:rev(a.id,cur),p:pct(rev(a.id,cur),rev(a.id,prev))})).sort((x,y)=>y.v-x.v),mx=Math.max(1,...R.map(r=>r.v));
+ $('rank').innerHTML=R.map((r,i)=>`<div class="bar"><span class="n"><span class="rk">${i+1}</span>${r.a.name}</span><i style="width:${Math.max(2,r.v/mx*100)*0.45}%;background:${r.a.color}"></i><span class="v">${fmt(r.v)} ${badge(r.p)}</span></div>`).join('')
+  +(R[0].v>0?`<p style="font-size:12px;color:var(--m);margin-top:8px">🏆 <b>${R[0].a.name}</b> est l'application la plus performante ce mois.</p>`:'');
+ const top=Math.max(1,...M.map(sum));
+ $('ch').innerHTML=M.map(m=>`<div title="${fmt(sum(m))}">${APPS.map(a=>`<i style="height:${rev(a.id,m)/top*100}%;background:${a.color}"></i>`).join('')}</div>`).join('');
+ $('lb').innerHTML=M.map(m=>`<span>${m.slice(5)}/${m.slice(2,4)}</span>`).join('');
+ $('lg').innerHTML=APPS.map(a=>`<span><b style="background:${a.color}"></b>${a.name}</span>`).join('');
+ $('apps').innerHTML=APPS.map(a=>`<div class="ev"><span><b>${a.name}</b> — ${fmt(tot(a.id))}</span><span class="st ${a.auto&&status[a.id]==='en direct'?'':'off'}">${a.auto?status[a.id]:'saisie manuelle'}</span></div>`).join('');
+ $('hist').innerHTML=MAN.slice().reverse().slice(0,8).map(e=>{const a=APPS.find(x=>x.id===e.app);return `<div class="ev"><span>${a.name} · ${e.m} · ${fmt(e.v)}</span><button onclick="delM(${e.id})">Suppr.</button></div>`}).join('');
+}
+function addM(){const v=+$('fv').value,m=$('fm').value;if(!v||!m)return alert('Choisissez un mois et un montant.');
+ MAN.push({id:Date.now(),app:$('fa').value,m,v});saveM();$('fv').value='';render()}
+function delM(id){MAN=MAN.filter(e=>e.id!==id);saveM();render()}
+
+// Mperfect Pub : somme des encaissements réels par mois (factures non annulées)
+function calcMperfect(ventes){
+ const o={};(ventes||[]).forEach(v=>{if(!v||v.statut==='annulee')return;
+  const pm=Array.isArray(v.paiements)&&v.paiements.length?v.paiements:(v.avance>0?[{montant:v.avance,ts:v.ts}]:[]);
+  pm.forEach(p=>{const t=p.ts||v.ts;if(!t||!p.montant)return;const m=ym(t);o[m]=(o[m]||0)+Number(p.montant)})});
+ return o}
+try{
+ const app=firebase.initializeApp(FB_MPERFECT,'mperfect'),db=app.firestore();
+ db.collection('mperfect-pub').doc('shared-state').onSnapshot(d=>{
+  const x=d.exists?d.data():{};AUTO.mperfect=calcMperfect(x.ventes||(x.state&&x.state.ventes));status.mperfect='en direct';render()},
+  e=>{status.mperfect='erreur ('+(e.code||'réseau')+')';render()});
+}catch(e){status.mperfect='indisponible'}
+// Express Pressing : connexion PDG puis lecture des commandes et abonnements (mêmes règles que son application)
+const FB_EP={apiKey:"AIzaSyC1RFjc7mxm_y63SZFpf8L5Y_XfaXDq-lw",authDomain:"express-pressing.firebaseapp.com",projectId:"express-pressing",storageBucket:"express-pressing.firebasestorage.app",messagingSenderId:"679347233700",appId:"1:679347233700:web:0f81a00ac9c637c4971731"};
+let epDb,epAuth,epUns=[],EPD={orders:[],cards:[]};
+const sha256=async s=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))].map(b=>b.toString(16).padStart(2,'0')).join('');
+function calcEP(){const o={},add=(d,v)=>{if(!d||!v)return;const m=String(d).slice(0,7);o[m]=(o[m]||0)+Number(v)};
+ EPD.orders.forEach(x=>add(x.date,x.paid));EPD.cards.forEach(x=>add(x.date,x.prix));AUTO.pressing=o;status.pressing='en direct';render()}
+function epListen(){epUns.forEach(f=>f());epUns=['orders','cards'].map(c=>epDb.collection('ep-'+c).onSnapshot(q=>{EPD[c]=q.docs.map(d=>d.data());calcEP()},e=>{status.pressing='erreur ('+(e.code||'réseau')+')';render()}))}
+async function epLogin(){const n=$('epn').value.trim(),c=$('epc').value.trim(),er=$('epe');er.textContent='';if(!n||!c)return er.textContent='Entrez le nom et le code.';
+ try{const k=await epDb.doc('ep-login/'+await sha256('n:'+n.toLowerCase())).get();if(!k.exists)return er.textContent='Nom ou code incorrect.';
+  await epAuth.signInWithEmailAndPassword(k.data().email,'EP#'+c+'#louga');$('epc').value=''}
+ catch(e){er.textContent=e.code==='auth/network-request-failed'?'Pas de connexion internet.':'Nom ou code incorrect ('+(e.code||e.message)+')'}}
+try{const a2=firebase.initializeApp(FB_EP,'pressing');epDb=a2.firestore();epAuth=a2.auth();
+ epAuth.onAuthStateChanged(async u=>{if(!u){epUns.forEach(f=>f());epUns=[];status.pressing='non connecté';$('epl').style.display='block';render();return}
+  try{const r=await epDb.doc('ep-roles/'+u.uid).get();if(!r.exists||r.data().role!=='pdg'){await epAuth.signOut();$('epe').textContent='Ce compte n\'est pas celui du PDG.';return}}catch(e){}
+  $('epl').style.display='none';status.pressing='connexion…';render();epListen()})}catch(e){status.pressing='indisponible'}
+$('fa').innerHTML=APPS.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+$('fm').value=ym(new Date());
+render();
+</script>
+</body>
+</html>
